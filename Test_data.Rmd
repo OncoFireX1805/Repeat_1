@@ -1,0 +1,20 @@
+---
+title: "Repet_1"
+author: "Parth"
+date: "2024-04-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Install all packages 
+```{r}
+install.packages("tidyverse")
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(DESeq2)
+```
+
