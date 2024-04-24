@@ -20,5 +20,54 @@ library(DESeq2)
 ```
 ```{r}
 library(AnnotationDbi)
+library(org.Hs.eg.db)
+```
+Obtaining the data and mearging the files for Dseq2 analysis 
+
+```{r}
+library(tximport)
+library(DESeq2)
+library(readr)
+
+# List the directories in the salmon_quant directory
+dirs <- list.files("C:/Users/parth/OneDrive/Desktop/rnaseq_data/salmon_quant")
+
+# List the files in the salmon_quant directory
+quant_files <- list.files("C:/Users/parth/OneDrive/Desktop/rnaseq_data/salmon_quant",
+                          pattern = "quant.sf",
+                          recursive = TRUE,
+                          full.names = TRUE)
+
+# Assign names to quant_files based on directory names
+names(quant_files) <- dirs
+
+# Read transcript-to-gene mapping CSV file
+tx2gene <- read_csv("C:/Users/parth/OneDrive/Desktop/rnaseq_data/tx2gene.csv", col_names = FALSE)
+
+# Import transcript-level abundance estimates using tximport
+txi <- tximport(files = quant_files,
+                type = "salmon",
+                tx2gene = tx2gene,
+                ignoreTxVersion = TRUE)
+
+# Read sample information from TSV file
+sampleinfo <- read_tsv("C:/Users/parth/OneDrive/Desktop/rnaseq_data/meta_data/sampleInfo_corrected.txt")
+
+# Create DESeqDataSet object
+dds <- DESeqDataSetFromTximport(txi, 
+                                colData = sampleinfo,
+                                design = ~Treated)
+
+```
+
+
+Now view all the files 
+```{r}
+library(tidyverse)
+View(quant_files)
+View(dds)
+tibble(tx2gene)
+View(sampleinfo)
+
 ```
 
