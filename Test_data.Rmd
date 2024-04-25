@@ -70,4 +70,80 @@ tibble(tx2gene)
 View(sampleinfo)
 
 ```
+So for now we have imported all the files and we are good to go, to perform Dseq 2 analysis we have to convert the condtion variable to make R treat them as numberical values First check
+```{r}
+type(dds$condition)
+```
+Now convert this in numnber--- did not understand why this did not work?
+```{r}
+dds$condition <- as.factor(dds$condition)
+type(dds$condition)
+```
+create a directory and save everything in R objects file 
+```{r}
+dir.create("Robjects",showWarnings = FALSE)
+saveRDS(dds,file = "Robjects/dds.rds")
+```
+
+Workflow 
+```{r}
+colData(dds)
+```
+Now desgin the experiment (try conditon here) and perform differential seq analysis 
+```{r}
+design(dds)<-~condition
+de_conditon<-DESeq(dds)
+results(de_conditon)
+
+```
+```{r}
+results(de_conditon,tidy = TRUE)
+```
+Sorting data properly for analysis 
+```{r}
+library(dplyr)
+library(tidyverse)
+library(DESeq2)
+results(de_conditon,tidy = TRUE)%>% arrange(padj)%>% head(n=100)
+```
+
+Now the main workflow, create directory, files and perform DSEq2 major analysis 
+```{r}
+dir.create("de_analysis",showWarnings = FALSE)
+results(de_conditon,tidy = TRUE)%>%arrange(desc(padj>0.05))%>%write.csv("conditional_analysis.csv")
+```
+
+Now save an RDS copy of this file important for graph making 
+```{r}
+saveRDS(de_conditon,file = "conditional_analysis")
+
+```
+check the file 
+```{r}
+results(de_conditon)
+library(tidyverse)
+de_conditon
+```
+Plot an MA plot 
+```{r}
+plotMA(de_conditon)
+```
+Check individual datapoints 
+```{r}
+plotCounts(dds,"ENSG00000158258",intgroup = "Treated")
+```
+Changing direction of contrast 
+```{r}
+# Assuming you're working with the limma package for differential expression analysis
+
+# Specify the contrasts you're interested in
+contrasts_of_interest <- c("condition", "CTR", "TGF")
+
+# Assuming `de_condition` represents your design matrix or contrast matrix
+# Call `results()` function with the necessary arguments
+results <- results(de_conditon, contrast = contrasts_of_interest)
+
+# Now you can proceed with further operations on `results`, such as summarizing or visualizing
+
+```
 
