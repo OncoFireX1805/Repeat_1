@@ -130,7 +130,7 @@ plotMA(de_conditon)
 ```
 Check individual datapoints 
 ```{r}
-plotCounts(dds,"ENSG00000158258",intgroup = "Treated")
+plotCounts(dds,"ENSG00000158258",intgroup = "condition")
 ```
 Changing direction of contrast 
 ```{r}
@@ -145,5 +145,102 @@ results <- results(de_conditon, contrast = contrasts_of_interest)
 
 # Now you can proceed with further operations on `results`, such as summarizing or visualizing
 
+```
+After obtaining the results of de_condition, designing the matrix and obtaining the required p value these values are now annotated with  Biocmanager package 
+```{r}
+install.packages("BiocManager")
+install.packages("org.Hs.eg.db")
+library(BiocManager)
+library(org.Hs.eg.db)
+
+
+
+```
+```{r}
+install.packages("org.Hs.eg.db")
+library(org.Hs.eg.db)
+columns(org.Hs.eg.db)
+```
+Now we add anootation filters using keytypes and key filters to check the data
+```{r}
+keytypes(org.Hs.eg.db)
+```
+
+```{r}
+keys(org.Hs.eg.db)
+```
+
+We can;t undertstand the numerical output and we have to assign them ENSEMBL (D (here)) 
+```{r}
+keys(org.Hs.eg.db,keytype = "ENSEMBL")[1:5]
+```
+```{r}
+keys(org.Hs.eg.db,keytype = "ENTREZID")[1:5]
+```
+Both ENSEMBL and ENTREZID are assigned a gene ID according to the respective databases and a unique code is provided to them 
+Now we assign gene names and its symbol in the ENSEMBL database 
+```{r}
+select(org.Hs.eg.db,keys = "ENSG00000158258",
+       keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME"))
+```
+Now annotate this database 
+```{r}
+AnnotationDbi::select(org.Hs.eg.db,keys ="ENSG00000158258",keytype = "ENSEMBL",column=c("SYMBOL","GENENAME"))
+```
+Now annotate the whole dataset 
+```{r}
+library(DESeq2)
+DESeq(dds)
+```
+
+```{r}
+anno<-AnnotationDbi::select(org.Hs.eg.db,keys = rownames(dds),columns = c("SYMBOL","GENENAME"),keytype = "ENSEMBL")
+tibble(anno)
+
+```
+
+```{r}
+results_annotated<-results(de_conditon,tidy=TRUE)%>%left_join(anno,by=c("row"="ENSEMBL"))
+head(results_annotated)
+```
+Write the csv file 
+```{r}
+write.csv(results_annotated,file = "De_condition_analysis.csv",row.names = FALSE)
+saveRDS(results_annotated,file = "Robjects/de_condition.rds")
+```
+Exporting normailesed counts 
+```{r}
+dds <- estimateSizeFactors(dds) 
+countmatrix<-counts(dds,normalized=TRUE)
+head(countmatrix)
+
+```
+```{r}
+#creating a ggplot to check the de_conditon database and see if we can generate ggplots accordingly this has been generated with dds and de_condition modified database
+ggplot(data = results_annotated) +
+  geom_point(mapping = aes(x = GENENAME, y = stat,colour=stat))
+```
+Creating volcano plots and DSeq 2 analysis 
+```{r}
+library(ggplot2)
+library(DESeq2)
+results_condition<-readRDS("C:/Users/parth/OneDrive/Desktop/repet_1/Repeat_1/Robjects/de_condition.rds")
+results_condition %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj))) + geom_point()
+```
+```{r}
+results_condition %>% 
+  mutate(Significant = padj < 0.05 & abs(log2FoldChange) > 2) %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), col=Significant)) + geom_point()
+```
+
+Applying the ifelse function 
+```{r}
+N <- 10
+top_genes <- dplyr::slice(results_condition, 1:N) %>% pull(row)
+
+results_condition %>% 
+  mutate(Label = ifelse(row %in% top_genes, SYMBOL, "")) %>%  
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=Label)) + geom_point(alpha=0.4) + geom_text(col="blue")
 ```
 
