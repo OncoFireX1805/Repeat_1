@@ -237,10 +237,150 @@ results_condition %>%
 Applying the ifelse function 
 ```{r}
 N <- 10
+if(!require(ggrepel))install.packages("ggrepel")
 top_genes <- dplyr::slice(results_condition, 1:N) %>% pull(row)
 
 results_condition %>% 
   mutate(Label = ifelse(row %in% top_genes, SYMBOL, "")) %>%  
   ggplot(aes(x = log2FoldChange, y = -log10(padj), label=Label)) + geom_point(alpha=0.4) + geom_text(col="blue")
+
+```
+
+```{r}
+head(results_condition)
+```
+
+Generate heatmaps of the code given 
+```{r}
+library(pheatmap)
+top_genes<-dplyr::slice(results_condition,1:10)%>%pull(row)
+vsd<-vst(dds)
+pheatmap(assay(vsd)[top_genes,])
+```
+Now it is ridiculous that you have to rememeber the ENSEMBL ID names so you can annotate them by using the annotationdbi:select function
+before that you merge the sample info with dds before you do that convert it to as dataframe 
+```{r}
+sampleInfo <- as.data.frame(colData(dds)[,c("condition","Treated")])#generating data from sampleinfo and merfing with dds data
+#now generating pheatmap 
+sampleInfo <- as.data.frame(colData(dds)[,c("condition","Treated")])
+
+pheatmap(assay(vsd)[top_genes,],
+         annotation_col = sampleInfo,scale = "row")
+```
+```{r}
+#now for the finale 
+gene_labels<-dplyr::slice(results_condition,1:N)%>%pull(SYMBOL)
+#Now label the dataset for heat map
+pheatmap(assay(vsd)[top_genes,],
+         annotation_col = sampleInfo,
+         labels_row = gene_labels,
+         scale="row")
+#SO hereby according to the data using condition to design the matrix we found that FCR expression is highest in non treated samples in CTR expressing dataset
+#remember the design function is used to focus your dataset on  one point and design your experiment around it 
+```
+
+Now pathway analysis 
+Threshold based gene testing to generate molecular pathways, here we check for the ECM pathways in cancer using the org.hs.eb.db database  
+```{r}
+library(org.Hs.eg.db)
+pathway_genes <- AnnotationDbi::select(org.Hs.eg.db,
+                                       keys = "GO:0030198",
+                                       keytype = "GO",
+                                       columns="ENSEMBL") %>% pull(ENSEMBL)
+
+
+```
+
+```{r}
+go_table <- mutate(results_condition, 
+                   inPathway = row %in% pathway_genes,
+                   isDE = padj < 0.05 & abs(log2FoldChange) > 1)
+go_table
+```
+pull out and check which values are true or false for your dataset and perform statistical test
+```{r}
+table(go_table$inPathway,go_table$isDE)
+chisq.test(table(go_table$inPathway, go_table$isDE))
+```
+ORA analysis with gene cluster profiler 
+```{r}
+library(clusterProfiler)
+universe <- results_condition %>% pull(row)
+sigGenes <- results_condition %>% 
+  filter(padj < 0.05, !is.na(row)) %>% pull(row)
+
+enrich_go <- enrichGO(
+  gene= sigGenes,
+  OrgDb = org.Hs.eg.db,
+  keyType = "ENSEMBL",
+  ont = "BP",
+  universe = universe,
+  qvalueCutoff = 0.05,
+  readable=TRUE
+)
+enrich_go%>%data.frame()
+View(enrich_go)
+```
+```{r}
+dotplot(enrich_go,showCategory=10)
+```
+Apply for emaplot 
+```{r}
+enrich_go <- enrichplot::pairwise_termsim(enrich_go)
+emapplot(enrich_go)
+```
+```{r}
+enrichplot::upsetplot(enrich_go)
+
+```
+
+GESA analysis: Gene set enrichment set analysis 
+```{r}
+ranked_genes <- results_condition %>% 
+  arrange(desc(stat)) %>% 
+  filter(!is.na(stat))
+  
+geneList <- pull(ranked_genes, stat)
+names(geneList) <- pull(ranked_genes, row)
+  
+gse_GO  <- gseGO(geneList = geneList,
+        OrgDb = org.Hs.eg.db,
+        ont = "BP",keyType = "ENSEMBL")
+```
+performing plot analysis 
+```{r}
+ridgeplot(gse_GO)
+```
+```{r}
+enrichplot::upsetplot(gse_GO)
+```
+
+```{r}
+gseaplot(gse_GO,geneSetID = "GO:0002286")
+
+```
+Interactive visualisation using genetonic 
+```{r}
+library(GeneTonic)
+design(dds) <- ~condition
+de <- DESeq(dds)
+##Don't use the tidy=TRUE option so the output stays as a DESeq object
+res_de <- results(de,contrast = c("condition", "TGF","CTR"))
+```
+Using Shake function: converting everything in common format 
+```{r}
+res_enrich <- shake_enrichResult(enrich_go)
+```
+
+
+```{r}
+anno_df <- AnnotationDbi::select(org.Hs.eg.db,keys=rownames(dds),columns="SYMBOL",keytype = "ENSEMBL")  %>% 
+  dplyr::rename(gene_id = ENSEMBL,gene_name=SYMBOL)
+```
+```{r}
+GeneTonic(dds,
+  res_de,
+  res_enrich,
+  anno_df)#create a new website for genetonic website 
 ```
 
