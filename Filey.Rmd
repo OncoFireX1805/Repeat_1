@@ -1,0 +1,89 @@
+---
+title: "x"
+author: "Parth"
+date: "2024-05-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("tidyverse")
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("DESeq2")
+```
+
+
+```{r}
+install.packages("BiocManager")
+BiocManager::install("DESeq2")
+library(DESeq2)
+```
+
+
+
+```{r}
+library(readr)
+library(readr)
+
+# Read CSV file with the first column as row names
+DatasheetB <- read.csv("C:/Users/parth/OneDrive/Desktop/New_start/DatasheetB.csv", header = TRUE, row.names = 1, sep = ",")
+
+# View the data
+View(DatasheetB)
+
+
+
+
+```
+```{r}
+print((cts))
+print(colnames(cts))
+```
+
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+```
+
+
+```{r}
+BiocManager::install("pasilla")
+```
+Exclude text columns before you proceed save them seperately
+
+```{r}
+
+
+```
+
+
+
+```{r}
+condition<-factor(c("M10","M12","M11","M3","M5"))
+```
+Mention the conditon and equate column anems to row names 
+
+```{r}
+coldata<-data.frame(row.names=colnames(DatasheetB),condition)
+```
+
+```{r}
+coldata
+```
+```{r}
+dds<-DESeqDataSetFromMatrix(countData = round(DatasheetB),colData = coldata,design = ~condition)
+```
+```{r}
+dds<-DESeq(dds)
+```
+
